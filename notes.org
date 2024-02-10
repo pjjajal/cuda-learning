@@ -40,7 +40,77 @@ dim3 dimBlock(256, 1, 1);
 // calling of the kernel.
 vecAddKernel<<<dimGrid, dimBlock>>>(...);
 // Another valid call signature of 1D grids and blocks.
-vecAddKernel<<<(ceil(n/256.0), 256>>>(...);
+vecAddKernel<<<(ceil(n/256.0)), 256>>>(...);
 #+end_src
 ** 3.2 - Mapping threads to multidimensional data
--
+- CUDA C uses row-major layout.
+
+*** Mapping threads to data examples:
+**** 1-D Case:
+#+begin_src C
+// Simple vector addition example..
+__global__ void vectorAdd(int* a, int* b, int* c, int size) {
+    /*
+      Think about blocks as chunking the vector, blockIdx is the chunk number.
+      Think about threads as adding the elements in each chunk, threadIdx is the element.
+     ,*/
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    // The thread grid can be larger then the input size.
+    // Implement bound checking when the grid is outside the data.
+    if (idx < size) {
+        c[idx] = a[idx] + b[idx];
+    }
+}
+
+int main() {
+    // Launch kernel on the device
+    int blockSize = 256;
+    // ceil(n / 256) blocks in a grid. (1-D)
+    // 256 threads per block. (1-D)
+    vectorAdd<<<ceil(n / 256), 256>>>(a, b, c, size);
+}
+#+end_src
+**** 2-D Case:
+#+begin_src C
+__global__ void grayscale(const unsigned char *input, unsigned char *output, size_t width, size_t height)
+{
+    // The col idx is found using x
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (col < width && row < height)
+    {
+        // need to do this since row-major order.
+        int index = row * width + col;
+        unsigned char r = input[index * 3];
+        unsigned char g = input[index * 3 + 1];
+        unsigned char b = input[index * 3 + 2];
+
+        output[index] = 0.21f * r + 0.71f * g + 0.07f * b;
+    }
+}
+
+int main() {
+
+    // Create 2-D grid of ceil(width)/32 and ceil(height)/32 blocks.
+    dim3 blocksPerGrid(ceil(width) / 32, ceil(height) / 32);
+    // 32 x 32 threads per block.
+    dim3 threadsPerBlock(32, 32);
+
+    // Launch Kernel.
+    grayscale<<<blocksPerGrid, threadsPerBlock>>>(colour, gray, width, height);
+
+}
+#+end_src
+**** 3-D Case:
+- Nearly identical to 2-D example. But add extra index over planes.
+#+begin_src C
+int height;
+int width;
+
+int col = blockIdx.x * blockDim.x + threadIdx.x;
+int row = blockIdx.y * blockDim.y + threadIdx.y;
+int plane = blockIdx.z * blockDim.z + threadIdx.z;
+
+int index = plane * height * width + row * width + col;
+#+end_src
