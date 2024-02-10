@@ -1,0 +1,46 @@
+#+title:     Programming Massively Parallel Processors Notes
+#+author:    Purvish Jajal
+#+email:     jajalpurvish@protonmail.com
+
+* Chapter 3 - Multidimensional Grids and Data
+** 3.1 - Multidimensional Grid Organization
+- All /threads/ and in a /grid/ execute the same kernel function.
+- /Threads/ are organized into a two-level hierarchy:
+  - *Grid*: made up of 1+ /blocks/.
+  - *Block*: made up of 1+ /threads/.
+- /Blocks/ have a ~blockIdx~ that specifies the index of the block in the /grid/.
+- /Thread/ have ~threadIdx~ that specifies the index of the thread in a /block/.
+- The dimensions of the /grid/ are in built-in: ~gridDim~ (i.e., the number of blocks in each dimension).
+- The dimensions of the /block/ are in built-in: ~blockDim~ (i.e., the number of threads in each dimension).
+- When calling a kernel the size of /grid/ and /blocks/ must be specified.
+  - Typically specified as follows: ~vecAdd<<< gridDimSize, blockDimSize >>>(...)~.
+  - ~gridDimSize~ and ~blockDimSize~ is type ~dim3~.
+- CUDA C:
+  - Allowed values of ~gridDim.x~ are $1$ to $(2**31) - 1$.
+  - Allowed values of ~gridDim.y~ and ~gridDim.z~ are $1$ to $(2**16) - 1$.
+  - *Total size of block in current CUDA systems is limited to $1024$ threads (total)*.
+
+*** Host Code Kernel Call Examples:
+**** Simple Example:
+Launching 1D grid with 32 blocks each of 128 threads.
+#+begin_src C
+// host code variables
+dim3 dimGrid(32, 1, 1);
+dim3 dimBlock(128, 1, 1);
+// calling of the kernel.
+vecAddKernel<<<dimGrid, dimBlock>>>(...); //
+#+end_src
+**** Grid Block Calculation:
+Launching 1D grid with variable number of blocks each of 256 threads.
+/n/ is known at kernel call time and will determine the dimension of the grid.
+#+begin_src C
+// host code variables
+dim3 dimGrid(ceil(n/256.0), 1, 1);
+dim3 dimBlock(256, 1, 1);
+// calling of the kernel.
+vecAddKernel<<<dimGrid, dimBlock>>>(...);
+// Another valid call signature of 1D grids and blocks.
+vecAddKernel<<<(ceil(n/256.0), 256>>>(...);
+#+end_src
+** 3.2 - Mapping threads to multidimensional data
+-
